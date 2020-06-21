@@ -1,0 +1,20 @@
+#! /bin/sh
+# file: nstdbgen	G. Moody	3 August 1992
+#			Last revised:	8 November 2002
+# UNIX shell script for generating sample noise stress test records
+
+nst -i mitdb/118 nstdb/em -o 118e24 -s 24 -F 212
+nst -i mitdb/118 nstdb/em -o 118e18 -s 18 -F 212
+nst -i mitdb/118 nstdb/em -o 118e12 -s 12 -F 212
+nst -i mitdb/118 nstdb/em -o 118e06 -s 6  -F 212
+nst -i mitdb/118 nstdb/em -o 118e00 -s 0
+nst -i mitdb/118 nstdb/em -o 118e_6 -s -6
+
+nst -i mitdb/119 nstdb/em -o 119e24 -s 24 -F 212
+nst -i mitdb/119 nstdb/em -o 119e18 -s 18 -F 212
+nst -i mitdb/119 nstdb/em -o 119e12 -s 12 -F 212
+nst -i mitdb/119 nstdb/em -o 119e06 -s 6  -F 212
+nst -i mitdb/119 nstdb/em -o 119e00 -s 0
+nst -i mitdb/119 nstdb/em -o 119e_6 -s -6
+
+rm nstdb/em.ns*

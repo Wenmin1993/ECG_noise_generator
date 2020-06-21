@@ -1,0 +1,48 @@
+# file: nstdbgen	G. Moody	3 August 1992
+
+# UNIX shell script for generating sample noise stress test records
+
+nst -i 118 em -o 118e24 -s 24 -F 212
+nst -i 118 em -o 118e18 -s 18 -F 212
+nst -i 118 em -o 118e12 -s 12 -F 212
+nst -i 118 em -o 118e06 -s 6  -F 212
+nst -i 118 em -o 118e00 -s 0
+nst -i 118 em -o 118e_6 -s -6
+
+nst -i 119 em -o 119e24 -s 24 -F 212
+nst -i 119 em -o 119e18 -s 18 -F 212
+nst -i 119 em -o 119e12 -s 12 -F 212
+nst -i 119 em -o 119e06 -s 6  -F 212
+nst -i 119 em -o 119e00 -s 0
+nst -i 119 em -o 119e_6 -s -6
+
+mv header.118e24 118e24.hea
+mv header.118e18 118e18.hea
+mv header.118e12 118e12.hea
+mv header.118e06 118e06.hea
+mv header.118e00 118e00.hea
+mv header.118e_6 118e_6.hea
+
+mv header.119e24 119e24.hea
+mv header.119e18 119e18.hea
+mv header.119e12 119e12.hea
+mv header.119e06 119e06.hea
+mv header.119e00 119e00.hea
+mv header.119e_6 119e_6.hea
+
+mv atruth.118e24 118e24.atr
+mv atruth.118e18 118e18.atr
+mv atruth.118e12 118e12.atr
+mv atruth.118e06 118e06.atr
+mv atruth.118e00 118e00.atr
+mv atruth.118e_6 118e_6.atr
+
+mv atruth.119e24 119e24.atr
+mv atruth.119e18 119e18.atr
+mv atruth.119e12 119e12.atr
+mv atruth.119e06 119e06.atr
+mv atruth.119e00 119e00.atr
+mv atruth.119e_6 119e_6.atr
+
+rm nsa*
+
