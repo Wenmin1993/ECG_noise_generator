@@ -71,39 +71,38 @@ def fix_labels(signals, beats, labels):
     return fixed_labels
 
 def get_white_Gaussian_Noise(signal,snr):
-
     snr = 10 ** (snr / 10.0)
     print(len(signal))
-    xpower = np.sum(signal ** 2) / len(signal)
-    npower = xpower / snr
-    wgn = np.random.randn(len(signal)) * np.sqrt(npower)
+    power_signal = np.sum(signal ** 2) / len(signal)
+    power_noise = power_signal / snr
+    wgn = np.random.randn(len(signal)) * np.sqrt(power_noise)
+
+    plt.subplot(211)
+    plt.title('Gauss Distribution')
+    plt.hist(wgn, bins=100)
+    plt.subplot(212)
+    plt.plot(wgn)
+    plt.show()
+
     return wgn
 
-    '''
-     t = np.arange(0, 1000000) * 0.1
-     x = np.sin(t)
-     n = wgn(x, 6)
-     xn = x + n
-     pl.subplot(211)
-     pl.hist(n, bins=100, normed=True)
-     pl.subplot(212)
-     pl.psd(n)
-     pl.show()
-    '''
-
 def get_noise(wgn,ma,bw,win_size):
+
     # Get the slice of data
-    #print(ma.shape[0],bw.shape[0])
+    print('shape:',ma.shape[0],bw.shape[0],wgn.shape[0])
     beg = np.random.randint(ma.shape[0]-win_size)
     end = beg+win_size
     beg2 = np.random.randint(bw.shape[0]-win_size)
     end2 = beg2+win_size
+    beg3 = np.random.randint(wgn.shape[0]-win_size)
+    end3 = beg3+win_size
 
     mains = creat_sine(128,int(win_size/128),60)*uniform(0,0.5)
-    mode = np.random.randint(5)
+
+    mode = np.random.randint(6)
     ma_multip = uniform(0,5)
     bw_multip = uniform(0,10)
-
+    print(mode)
 
     # Add noise
     if mode == 0:
@@ -111,17 +110,23 @@ def get_noise(wgn,ma,bw,win_size):
     elif mode == 1:
         noise = bw[beg2:end2]*bw_multip
     elif mode == 2:
-        noise = wgn
+        noise = wgn[beg3:end3]
     elif mode == 3:
-        noise = ma[beg:end]*ma_multip+wgn
+        noise = ma[beg:end]*ma_multip+wgn[beg3:end3]
     elif mode == 4:
-        noise = bw[beg2:end2]*bw_multip+wgn
+        noise = bw[beg2:end2]*bw_multip+wgn[beg3:end3]
+    elif mode == 5:
+        noise = ma[beg:end]*ma_multip+bw[beg2:end2]*bw_multip
     else:
-        noise = (ma[beg:end]*ma_multip)+(bw[beg2:end2]*bw_multip)+wgn
+        noise = ma[beg:end]*ma_multip+bw[beg2:end2]*bw_multip+wgn[beg3:end3]
 
 
     noise_final = noise + mains
     print('noise:',noise_final)
+    plt.subplot(211)
+    plt.plot(mains)
+    plt.title('Sine wave')
+    plt.subplot(212)
     plt.plot(noise_final)
     plt.title('final noise')
     plt.show()
@@ -159,7 +164,6 @@ def get_beats(annotation):
     symbols = np.asarray(annotation.symbol)[indices]
     beats = annotation.sample[indices]
     #print(annotation.sample)
-
     return beats, symbols
 
 def creat_sine(sampling_frequency,time_s,sine_frequency):
@@ -185,6 +189,7 @@ def creat_sine(sampling_frequency,time_s,sine_frequency):
 
        """
     samples = np.arange(time_s * sampling_frequency) / sampling_frequency
+    print('samples:',samples)
     sine = np.sin(2 * np.pi * sine_frequency * samples)
     print('sine',sine)
     plt.plot(sine)
@@ -206,15 +211,20 @@ def get_ecg_records(database, channel):
             continue
         else:
             print('processing record:',record)
-            s, f = wfdb.rdsamp(record, channels=[channel], pn_dir=database)
-            print('length of signal: ',f['sig_len'])
-            sample_from = np.random.randint(f['sig_len']-1000)
-            print('sample_from: ',sample_from)
-            signal = ( wfdb.rdsamp(record,channels=[channel], sampfrom=sample_from, sampto=sample_from+1000, pn_dir=database))
+            s, f = wfdb.rdsamp(record, pn_dir=database)
+            print(f)
+
+            #print('length of signal: ',f['sig_len'])
+            #sample_from = np.random.randint(f['sig_len']-1000)
+            #print('sample_from: ',sample_from)
+            #signal = (wfdb.rdsamp(record,channels=[channel], sampfrom=sample_from, sampto=sample_from+1000, pn_dir=database))
             annotation = wfdb.rdann('{}/{}'.format(database, record), extension='atr')
+            if f['fs'] != 128:
+                signal, annotation = resample_singlechan(s[:,channel],annotation, fs=f['fs'], fs_target=128)
+            else:
+                signal, field = wfdb.rdsamp(record,channels= [channel], pn_dir=database)
 
-            signal, annotation = resample_singlechan(s[:, channel], annotation, fs=f[], fs_target=120)
-
+            print(signal)
             beat_loc, beat_type = get_beats(annotation)
             signals.append(signal)
             beat_locations.append(beat_loc)
@@ -222,9 +232,9 @@ def get_ecg_records(database, channel):
             print('size of signal list: ',len(signals))
             print('--------')
 
-    print('first signal in list :',signals[0][0])
+    print('first signal in list :',signals[0])
     print('-------record processed!------')
-    plt.plot(signals[0][0])
+    plt.plot(signals[0])
     plt.title(database+' record')
     plt.show()
 
@@ -246,7 +256,7 @@ def get_ecg_records(database, channel):
     print('annotation:',annotations)   
     """
 
-def ecg_generator(signals,peaks,labels,ma,bw,win_size,batch_size):
+def ecg_generator(signals,peaks,labels,wgn,ma,bw,win_size,batch_size):
     """
        Generate ECG data with R-peak labels.
 
@@ -316,6 +326,7 @@ def ecg_generator(signals,peaks,labels,ma,bw,win_size,batch_size):
 
                 # Check that every beat in the window is normal beat
                 if np.all(lab_in_win == 1):
+
                     # Create labels for data window
                     window_labels = np.zeros(win_size)
                     np.put(window_labels, p_in_win, lab_in_win)
@@ -331,7 +342,7 @@ def ecg_generator(signals,peaks,labels,ma,bw,win_size,batch_size):
                                                lb=-1, ub=1)
 
                     # Add noise into data window and normalize it again
-                    data_win = data_win + get_noise(ma, bw, win_size)
+                    data_win = data_win + get_noise(wgn,ma, bw, win_size)
                     data_win = normalize_bound(data_win, lb=-1, ub=1)
 
                     X.append(data_win)
@@ -346,17 +357,38 @@ def ecg_generator(signals,peaks,labels,ma,bw,win_size,batch_size):
         yield (X, y)
 
 nsr,nsr_bls,nsr_labels = get_ecg_records('nsrdb', 0)
-#af,af_bls,af_labels = get_ecg_records('afdb', 0)
-#ma,ma_field,ma_size = get_noise_record('ma','nstdb')
-#bw,bw_field,bw_size= get_noise_record('bw','nstdb')
-#wgn = get_white_Gaussian_Noise(nsr[0][0],6)
-#noise = get_noise(wgn,ma,bw,1000)
+af,af_bls,af_labels = get_ecg_records('afdb', 0)
+ma,ma_field,ma_size = get_noise_record('ma','nstdb')
+bw,bw_field,bw_size= get_noise_record('bw','nstdb')
 
-plt.plot(wgn)
-#plt.subplot(214)
-#plt.psd(noise)
+'''
+#test for get_white_Gaussian_Noise(x).
+
+t = np.arange(0, 1000000) * 0.1
+x = np.sin(t)
+wgn = get_white_Gaussian_Noise(x,6)
+xn = x+wgn
+plt.subplot(311)
+plt.title('Gauss Distribution')
+plt.hist(wgn, bins=100)
+plt.subplot(312)
+plt.psd(wgn)
+plt.subplot(313)
+plt.psd(xn)
 plt.show()
-#print('ma:',ma,'ma_size:',ma_size,'bw:',bw,'bw_size:',bw_size)
-# record = wfdb.rdrecord('bw',pn_dir='nstdb/')
-# wfdb.plot_wfdb(record=record, title='Record bw in nstdb') #显示该记录
+'''
+wgn_nsr = get_white_Gaussian_Noise(nsr[0],6)
+wgn_af = get_white_Gaussian_Noise(af[0],6)
+
+noise_for_nsr = get_noise(wgn_nsr,ma,bw,1280)
+noise_for_af = get_noise(wgn_af,ma,bw,1280)
+
+ecg_generator(nsr,)
+
+'''
+sine = creat_sine(128,int(1280/128),60)
+print(sine.shape[0])
+'''
+
+
 # print(record.__dict__)
